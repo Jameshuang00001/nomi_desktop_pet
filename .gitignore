@@ -1,0 +1,8 @@
+.DS_Store
+dist/
+*.app/
+*.dSYM/
+__pycache__/
+.env
+.env.*
+motion-check.json
