@@ -121,9 +121,9 @@ extension Controller {
   foldersAllowed=false;UserDefaults.standard.set(false,forKey:"foldersAllowed");cancelFolder();status.menu=menu()
   let alert=NSAlert();alert.messageText="暂时不能拖动桌面文件夹";alert.informativeText=message;alert.runModal()
  }
- func cancelFolder(){
+ func cancelFolder(completed:Bool=false){
   guard folderBusy else{return};folderGeneration+=1;folderTimer?.invalidate();folderTimer=nil;folderBusy=false
-  nextFolder=ProcessInfo.processInfo.systemUptime+Double.random(in:90...180)
+  nextFolder=ProcessInfo.processInfo.systemUptime+(completed ? Double.random(in:60...120):10)
   web?.evaluateJavaScript("endFolder()")
  }
  func desktopLayout()->(blocked:Bool,iconSize:Double){
@@ -139,29 +139,29 @@ extension Controller {
   let layout=desktopLayout()
   if layout.blocked{if manual{folderNotice("桌面正在使用叠放或自动排序，项目坐标可能与可见图标不一致。请关闭“使用叠放”，将“排序方式”设为“无”后再拖动。")};return}
   let now=ProcessInfo.processInfo.systemUptime
-  // Only work when Finder is foreground: do not drag icons behind another app.
-  guard (manual || foldersAllowed),!folderBusy,!pottyRunning,!pottyPending,!dragging,!animationPaused,!isSleeping,!sleepPolicy.sleeping(at:Date()),panel.isVisible,panel.isOnActiveSpace,(manual || now>=nextFolder),(manual || NSWorkspace.shared.frontmostApplication?.bundleIdentifier=="com.apple.finder"),let screen=NSScreen.screens.first else{if manual{folderNotice("当前正在执行其他动作，或小猫不在当前桌面，请稍后再试。")};return}
-  nextFolder=now+Double.random(in:90...180);folderBusy=true;folderGeneration+=1;let generation=folderGeneration
+  // Desktop windows stay below apps; Finder need not own keyboard focus.
+  guard (manual || foldersAllowed),!folderBusy,!pottyRunning,!pottyPending,!dragging,!animationPaused,!isSleeping,!sleepPolicy.sleeping(at:Date()),panel.isVisible,panel.isOnActiveSpace,(manual || now>=nextFolder),let screen=NSScreen.screens.first else{if manual{folderNotice("当前正在执行其他动作，或小猫不在当前桌面，请稍后再试。")};return}
+  nextFolder=now+10;folderBusy=true;folderGeneration+=1;let generation=folderGeneration
   folderBridge.nearby{[weak self] folders,error in
    guard let self=self,self.folderGeneration==generation else{return}
    if let error=error{self.folderFailure(error);return}
    let near=folders.filter { f in
     let point=NSPoint(x:f.x,y:Int(screen.frame.maxY)-f.y)
-    return f.x>48 && f.y>0 && screen.visibleFrame.contains(point) && (manual || hypot(point.x-self.panel.frame.midX,point.y-self.panel.frame.midY)<180)
+    return f.x>48 && f.y>0 && screen.visibleFrame.contains(point) && (manual || hypot(point.x-self.panel.frame.midX,point.y-self.panel.frame.midY)<300)
    }.min {a,b in hypot(Double(a.x)-self.panel.frame.midX,screen.frame.maxY-Double(a.y)-self.panel.frame.midY)<hypot(Double(b.x)-self.panel.frame.midX,screen.frame.maxY-Double(b.y)-self.panel.frame.midY)}
    guard let folder=near else{self.cancelFolder();if manual{self.folderNotice("当前主屏幕桌面没有可拖动的文件或文件夹。请确认图标已显示，且没有使用叠放隐藏它们。")};return}
-   self.web.evaluateJavaScript("beginFolder()"){[weak self] value,_ in
+   self.web.evaluateJavaScript("beginFolder(true)"){[weak self] value,_ in
     guard let self=self,self.folderGeneration==generation else{return}
     guard value as? Bool == true else{self.cancelFolder();if manual{self.folderNotice("动画尚未准备好或小猫正忙，请再点一次。")};return}
     let iconContact=NSPoint(x:Double(folder.x)-layout.iconSize/2+8,y:Double(screen.frame.maxY)-Double(folder.y)+layout.iconSize/2-8)
     let target=NSPoint(x:iconContact.x-134.8*self.sizeFactor,y:iconContact.y-31.6*self.sizeFactor)
     guard target.x-42>=screen.frame.minX else{self.cancelFolder();if manual{self.folderNotice("目标太靠近屏幕左侧，无法保持咬合拖动。请先将图标稍微向右移。")};return}
-    UserDefaults.standard.set(["item":folder.name,"fromX":folder.x,"toX":folder.x,"y":folder.y,"steps":0] as [String:Any],forKey:"lastFolderDrag")
+    UserDefaults.standard.set(["item":folder.name,"fromX":folder.x,"toX":folder.x,"y":folder.y,"steps":0,"automatic":!manual] as [String:Any],forKey:"lastFolderDrag")
     let origin=self.panel.frame.origin;let start=ProcessInfo.processInfo.systemUptime
     var step=0,inFlight=false,currentX=folder.x
     self.folderTimer=Timer.scheduledTimer(withTimeInterval:1.0/30,repeats:true){[weak self] timer in
      guard let self=self,self.folderGeneration==generation else{timer.invalidate();return}
-     guard (manual || self.foldersAllowed),!self.dragging,!self.animationPaused,!self.sleepPolicy.sleeping(at:Date()),self.panel.isVisible,self.panel.isOnActiveSpace,(manual || NSWorkspace.shared.frontmostApplication?.bundleIdentifier=="com.apple.finder") else{self.cancelFolder();return}
+     guard (manual || self.foldersAllowed),!self.dragging,!self.animationPaused,!self.sleepPolicy.sleeping(at:Date()),self.panel.isVisible,self.panel.isOnActiveSpace else{self.cancelFolder();return}
      let elapsed=ProcessInfo.processInfo.systemUptime-start
      if elapsed<1 {let t=elapsed*elapsed*(3-2*elapsed);self.panel.setFrameOrigin(NSPoint(x:origin.x+(target.x-origin.x)*t,y:origin.y+(target.y-origin.y)*t));return}
      if step==0 {
@@ -170,13 +170,13 @@ extension Controller {
       self.web.evaluateJavaScript("folderPose(1)")
      }
      guard !inFlight,elapsed>=1.5+Double(step)*0.4 else{return}
-     if step>=6{self.cancelFolder();self.motion.x=self.panel.frame.minX;return}
+     if step>=6{self.cancelFolder(completed:true);self.motion.x=self.panel.frame.minX;return}
      inFlight=true;let nextX=currentX-7
      self.folderBridge.place(folder,fromX:currentX,toX:nextX){[weak self] ok in
       guard let self=self,self.folderGeneration==generation else{return};inFlight=false
       guard ok else{self.cancelFolder();if manual{self.folderNotice("Finder 未保持图标位置。请将桌面排序设为“无”，检查叠放设置，或确认该文件未被同时移动。")};return} // Auto-arrange or user changes: stop, never fight Finder.
       currentX=nextX;step+=1
-      UserDefaults.standard.set(["item":folder.name,"fromX":folder.x,"toX":currentX,"y":folder.y,"steps":step] as [String:Any],forKey:"lastFolderDrag")
+      UserDefaults.standard.set(["item":folder.name,"fromX":folder.x,"toX":currentX,"y":folder.y,"steps":step,"automatic":!manual] as [String:Any],forKey:"lastFolderDrag")
       self.panel.setFrameOrigin(NSPoint(x:target.x-Double(step)*7,y:target.y));self.motion.x=self.panel.frame.minX
       self.web.evaluateJavaScript("folderPose(\(step%2==0 ? 2:3))")
      }

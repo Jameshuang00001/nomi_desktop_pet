@@ -2,8 +2,11 @@ const folderImage=new Image(),folderCanvas=document.createElement('canvas');
 folderImage.src='folder-sheet.png';folderCanvas.width=384;folderCanvas.height=416;
 folderCanvas.style.cssText='position:absolute;inset:0;width:192px;height:208px;display:none;pointer-events:none';pet.appendChild(folderCanvas);
 const folderContext=folderCanvas.getContext('2d');
-function beginFolder(){
- if(folderActive||sleeping||pottyActive||paused||drag||nativeHidden||locked||roamUntil||!folderImage.complete||!folderImage.naturalWidth)return false;
+function beginFolder(interruptAmbient=false){
+ if(folderActive||sleeping||pottyActive||paused||drag||nativeHidden||!folderImage.complete||!folderImage.naturalWidth)return false;
+ // Only preempt ambient roaming/gaze, never sleep, user gestures or other actions.
+ if(interruptAmbient&&(roamUntil||isLooking)){stopLooking();roamUntil=0;setState(0)}
+ if(locked||roamUntil)return false;
  folderActive=true;cancelLook();clearTimeout(timer);clearTimeout(release);clearTimeout(clickTimer);locked=true;roamUntil=0;return true;
 }
 function folderPose(f){

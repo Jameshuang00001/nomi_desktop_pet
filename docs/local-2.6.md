@@ -39,3 +39,10 @@
 还原期间阻止新拖动。叠放或自动排列开启时提示先关闭，不会暗改桌面设置。按桌面项目名称匹配，重命名或移出桌面的项目会保留记录并报失败。
 旧版仅有最后一次拖动记录，因此只导入那一次已成功拖动的起点一次；不能推算更早历史。
 PositionHistory单测覆盖首次起点不覆盖、重启保留、旧记录只导入一次、成功清理与重新拖动的新起点；编译签名和动画状态测试通过。没有擅自执行用户全部文件位置还原。
+
+## 2.6.6 — automatic file drag scheduling
+- Removed Finder-frontmost requirement; desktop-level cat and icons remain underneath ordinary app windows.
+- Automatic drag can interrupt ambient roaming/gaze, but not sleep, pause, user dragging, potty or other locked actions.
+- Nearby search radius: 180 → 300 points. Unsuccessful attempts retry after 10 seconds; completed drags rest 60–120 seconds. Initial launch delay remains 30 seconds.
+- `lastFolderDrag.automatic` distinguishes a real automatic move from a manual test; coordinate readback and original-position history remain required for every successful step.
+- Regression suite passed, including interruption/exclusion tests; signed 2.6.6 local build installed. Runtime auto-drag observation recorded separately below.
