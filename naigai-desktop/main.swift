@@ -22,7 +22,7 @@ final class Controller: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
  var start=NSPoint.zero, origin=NSPoint.zero, dragging=false
  func applicationDidFinishLaunching(_ notification:Notification) {
   panel=NSPanel(contentRect:NSRect(x:0,y:0,width:180,height:170),styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
-  panel.title="糯米桌面宠物";panel.isOpaque=false;panel.backgroundColor = .clear;panel.hasShadow=false;panel.level = .floating
+  panel.title="糯米桌面宠物";panel.isOpaque=false;panel.backgroundColor = .clear;panel.hasShadow=false;panel.level = NSWindow.Level(rawValue:Int(CGWindowLevelForKey(.desktopIconWindow))+1)
   panel.hidesOnDeactivate=false;panel.collectionBehavior=[.canJoinAllSpaces,.fullScreenNone,.fullScreenDisallowsTiling]
   let config=WKWebViewConfiguration();config.userContentController.add(self,name:"pet")
   web=WKWebView(frame:panel.contentView!.bounds,configuration:config);web.autoresizingMask=[.width,.height];web.setValue(false,forKey:"drawsBackground");web.navigationDelegate=self
