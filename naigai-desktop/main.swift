@@ -49,7 +49,12 @@ final class Controller: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
   roaming=UserDefaults.standard.object(forKey:"roaming") as? Bool ?? true
   if sizeFactor<=0 {sizeFactor=1};applySize();status.menu=menu();reset();droppings.restore();panel.orderFrontRegardless()
  }
- func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!) {pageReady=true;refreshSleep();webView.evaluateJavaScript("setRoaming(\(roaming));document.body.dataset.nativeReady='true'");lookTimer?.invalidate();lookTimer=Timer.scheduledTimer(timeInterval:0.05,target:self,selector:#selector(tryLook),userInfo:nil,repeats:true)}
+ func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!) {pageReady=true;refreshSleep();
+ if UserDefaults.standard.bool(forKey:"folderDragTestOnce") {
+  UserDefaults.standard.removeObject(forKey:"folderDragTestOnce")
+  DispatchQueue.main.asyncAfter(deadline:.now()+2){[weak self] in self?.dragNearestFile()}
+ }
+ webView.evaluateJavaScript("setRoaming(\(roaming));document.body.dataset.nativeReady='true'");lookTimer?.invalidate();lookTimer=Timer.scheduledTimer(timeInterval:0.05,target:self,selector:#selector(tryLook),userInfo:nil,repeats:true)}
  @objc func tryLook(){
   let now=ProcessInfo.processInfo.systemUptime
   guard panel.isVisible,panel.isOnActiveSpace,!dragging,!animationPaused,!isSleeping,!pottyRunning,!folderBusy else{

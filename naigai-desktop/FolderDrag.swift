@@ -90,7 +90,17 @@ extension Controller {
   nextFolder=ProcessInfo.processInfo.systemUptime+Double.random(in:90...180)
   web?.evaluateJavaScript("endFolder()")
  }
+ func desktopLayout()->(blocked:Bool,iconSize:Double){
+  CFPreferencesAppSynchronize("com.apple.finder" as CFString)
+  let d=CFPreferencesCopyAppValue("DesktopViewSettings" as CFString,"com.apple.finder" as CFString) as? [String:Any] ?? [:]
+  let icons=d["IconViewSettings"] as? [String:Any] ?? [:]
+  let group=(d["GroupBy"] as? String ?? "None").lowercased()
+  let arrangement=(icons["arrangeBy"] as? String ?? "none").lowercased()
+  return (group != "none" || arrangement != "none",(icons["iconSize"] as? NSNumber)?.doubleValue ?? 64)
+ }
  func attemptFolder(manual:Bool=false){
+  let layout=desktopLayout()
+  if layout.blocked{if manual{folderNotice("桌面正在使用叠放或自动排序，项目坐标可能与可见图标不一致。请关闭“使用叠放”，将“排序方式”设为“无”后再拖动。")};return}
   let now=ProcessInfo.processInfo.systemUptime
   // Only work when Finder is foreground: do not drag icons behind another app.
   guard (manual || foldersAllowed),!folderBusy,!pottyRunning,!pottyPending,!dragging,!animationPaused,!isSleeping,!sleepPolicy.sleeping(at:Date()),panel.isVisible,panel.isOnActiveSpace,(manual || now>=nextFolder),(manual || NSWorkspace.shared.frontmostApplication?.bundleIdentifier=="com.apple.finder"),let screen=NSScreen.screens.first else{if manual{folderNotice("当前正在执行其他动作，或小猫不在当前桌面，请稍后再试。")};return}
@@ -106,9 +116,10 @@ extension Controller {
    self.web.evaluateJavaScript("beginFolder()"){[weak self] value,_ in
     guard let self=self,self.folderGeneration==generation else{return}
     guard value as? Bool == true else{self.cancelFolder();if manual{self.folderNotice("动画尚未准备好或小猫正忙，请再点一次。")};return}
-    var target=NSPoint(x:Double(folder.x)-24-135*self.sizeFactor,y:Double(screen.frame.maxY)-Double(folder.y)+24.0-42.0*self.sizeFactor)
-    target.x=min(max(target.x,screen.visibleFrame.minX+42),screen.visibleFrame.maxX-self.panel.frame.width)
-    target.y=min(max(target.y,screen.visibleFrame.minY),screen.visibleFrame.maxY-self.panel.frame.height)
+    let iconContact=NSPoint(x:Double(folder.x)-layout.iconSize/2+8,y:Double(screen.frame.maxY)-Double(folder.y)+layout.iconSize/2-8)
+    let target=NSPoint(x:iconContact.x-134.8*self.sizeFactor,y:iconContact.y-31.6*self.sizeFactor)
+    guard target.x-42>=screen.frame.minX else{self.cancelFolder();if manual{self.folderNotice("目标太靠近屏幕左侧，无法保持咬合拖动。请先将图标稍微向右移。")};return}
+    UserDefaults.standard.set(["item":folder.name,"fromX":folder.x,"toX":folder.x,"y":folder.y,"steps":0] as [String:Any],forKey:"lastFolderDrag")
     let origin=self.panel.frame.origin;let start=ProcessInfo.processInfo.systemUptime
     var step=0,inFlight=false,currentX=folder.x
     self.folderTimer=Timer.scheduledTimer(withTimeInterval:1.0/30,repeats:true){[weak self] timer in
@@ -116,7 +127,11 @@ extension Controller {
      guard (manual || self.foldersAllowed),!self.dragging,!self.animationPaused,!self.sleepPolicy.sleeping(at:Date()),self.panel.isVisible,self.panel.isOnActiveSpace,(manual || NSWorkspace.shared.frontmostApplication?.bundleIdentifier=="com.apple.finder") else{self.cancelFolder();return}
      let elapsed=ProcessInfo.processInfo.systemUptime-start
      if elapsed<1 {let t=elapsed*elapsed*(3-2*elapsed);self.panel.setFrameOrigin(NSPoint(x:origin.x+(target.x-origin.x)*t,y:origin.y+(target.y-origin.y)*t));return}
-     if step==0 {self.panel.setFrameOrigin(target)}
+     if step==0 {
+      self.panel.setFrameOrigin(target)
+      guard hypot(self.panel.frame.minX-target.x,self.panel.frame.minY-target.y)<3 else{self.cancelFolder();if manual{self.folderNotice("目标靠近屏幕边缘，无法对齐嘴部，已停止拖动。")};return}
+      self.web.evaluateJavaScript("folderPose(1)")
+     }
      guard !inFlight,elapsed>=1.5+Double(step)*0.4 else{return}
      if step>=6{self.cancelFolder();self.motion.x=self.panel.frame.minX;return}
      inFlight=true;let nextX=currentX-7
@@ -124,6 +139,7 @@ extension Controller {
       guard let self=self,self.folderGeneration==generation else{return};inFlight=false
       guard ok else{self.cancelFolder();if manual{self.folderNotice("Finder 未保持图标位置。请将桌面排序设为“无”，检查叠放设置，或确认该文件未被同时移动。")};return} // Auto-arrange or user changes: stop, never fight Finder.
       currentX=nextX;step+=1
+      UserDefaults.standard.set(["item":folder.name,"fromX":folder.x,"toX":currentX,"y":folder.y,"steps":step] as [String:Any],forKey:"lastFolderDrag")
       self.panel.setFrameOrigin(NSPoint(x:target.x-Double(step)*7,y:target.y));self.motion.x=self.panel.frame.minX
       self.web.evaluateJavaScript("folderPose(\(step%2==0 ? 2:3))")
      }
