@@ -96,6 +96,7 @@ final class Controller: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
   let m=NSMenu();m.addItem(NSMenuItem(title:"糯米 · 桌面宠物",action:nil,keyEquivalent:""))
   m.addItem(NSMenuItem(title:isSleeping ? "正在睡觉 · 夜间 23:00–06:00":"清醒中 · 夜间 23:00–06:00",action:nil,keyEquivalent:""))
   let wake=item("手动唤醒（夜间清醒20秒）",#selector(wakeManually));wake.isEnabled=isSleeping;m.addItem(wake)
+  m.addItem(item("拖动文件（立即拖动最近的文件）",#selector(dragNearestFile)))
   let folders=item("允许糯米拖动文件夹",#selector(toggleFolders));folders.state=foldersAllowed ? .on:.off;m.addItem(folders)
   let potty=item("允许糯米拉屎",#selector(togglePotty));potty.state=pottyAllowed ? .on:.off;m.addItem(potty)
   m.addItem(item("一键清理",#selector(clearDroppings)))

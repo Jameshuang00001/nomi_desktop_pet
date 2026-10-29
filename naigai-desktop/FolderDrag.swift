@@ -10,11 +10,13 @@ final class FolderBridge {
    let script=NSAppleScript(source:"""
    tell application "Finder"
     set resultList to {}
-    repeat with f in (folders of desktop)
+    repeat with f in (items of desktop)
+     if class of f is not disk then
      try
       set p to desktop position of f
       set end of resultList to {name of f, item 1 of p, item 2 of p}
      end try
+     end if
     end repeat
     return resultList
    end tell
@@ -33,8 +35,8 @@ final class FolderBridge {
    var error:NSDictionary?
    let result=NSAppleScript(source:"""
    tell application "Finder"
-    if not (exists folder \(name) of desktop) then return false
-    set f to folder \(name) of desktop
+    if not (exists item \(name) of desktop) then return false
+    set f to item \(name) of desktop
     set p to desktop position of f
     if (item 1 of p is not \(fromX)) or (item 2 of p is not \(folder.y)) then return false
     set desktop position of f to {\(toX), \(folder.y)}
@@ -49,6 +51,18 @@ final class FolderBridge {
 }
 
 extension Controller {
+ func folderNotice(_ message:String){let alert=NSAlert();alert.messageText="拖动桌面文件";alert.informativeText=message;alert.runModal()}
+ @objc func dragNearestFile(){
+  cancelFolder()
+  if animationPaused{pause()}
+  if isSleeping{wakeManually()}
+  if !panel.isVisible{toggleVisible()}
+  web.evaluateJavaScript("finishPotty();stopLooking();roamUntil=0;setState(0);restUntil=performance.now()+10000"){[weak self] _,_ in
+   guard let self=self else{return};self.pottyRunning=false;self.pottyPending=false
+   self.attemptFolder(manual:true)
+  }
+ }
+
  @objc func toggleFolders(){
   foldersAllowed.toggle();UserDefaults.standard.set(foldersAllowed,forKey:"foldersAllowed");status.menu=menu()
   if !foldersAllowed{cancelFolder();return}
@@ -64,29 +78,30 @@ extension Controller {
   nextFolder=ProcessInfo.processInfo.systemUptime+Double.random(in:90...180)
   web?.evaluateJavaScript("endFolder()")
  }
- func attemptFolder(){
+ func attemptFolder(manual:Bool=false){
   let now=ProcessInfo.processInfo.systemUptime
   // Only work when Finder is foreground: do not drag icons behind another app.
-  guard foldersAllowed,!folderBusy,!pottyRunning,!pottyPending,!dragging,!animationPaused,!isSleeping,!sleepPolicy.sleeping(at:Date()),panel.isVisible,panel.isOnActiveSpace,now>=nextFolder,NSWorkspace.shared.frontmostApplication?.bundleIdentifier=="com.apple.finder",let screen=NSScreen.screens.first else{return}
+  guard (manual || foldersAllowed),!folderBusy,!pottyRunning,!pottyPending,!dragging,!animationPaused,!isSleeping,!sleepPolicy.sleeping(at:Date()),panel.isVisible,panel.isOnActiveSpace,(manual || now>=nextFolder),(manual || NSWorkspace.shared.frontmostApplication?.bundleIdentifier=="com.apple.finder"),let screen=NSScreen.screens.first else{if manual{folderNotice("当前正在执行其他动作，或小猫不在当前桌面，请稍后再试。")};return}
   nextFolder=now+Double.random(in:90...180);folderBusy=true;folderGeneration+=1;let generation=folderGeneration
   folderBridge.nearby{[weak self] folders,error in
    guard let self=self,self.folderGeneration==generation else{return}
    if let error=error{self.folderFailure(error);return}
    let near=folders.filter { f in
     let point=NSPoint(x:f.x,y:Int(screen.frame.maxY)-f.y)
-    return f.x>100 && f.y>40 && screen.visibleFrame.contains(point) && hypot(point.x-self.panel.frame.midX,point.y-self.panel.frame.midY)<180
+    return f.x>48 && f.y>0 && screen.visibleFrame.contains(point) && (manual || hypot(point.x-self.panel.frame.midX,point.y-self.panel.frame.midY)<180)
    }.min {a,b in hypot(Double(a.x)-self.panel.frame.midX,screen.frame.maxY-Double(a.y)-self.panel.frame.midY)<hypot(Double(b.x)-self.panel.frame.midX,screen.frame.maxY-Double(b.y)-self.panel.frame.midY)}
-   guard let folder=near else{self.cancelFolder();return}
+   guard let folder=near else{self.cancelFolder();if manual{self.folderNotice("当前主屏幕桌面没有可拖动的文件或文件夹。请确认图标已显示，且没有使用叠放隐藏它们。")};return}
    self.web.evaluateJavaScript("beginFolder()"){[weak self] value,_ in
     guard let self=self,self.folderGeneration==generation else{return}
-    guard value as? Bool == true else{self.cancelFolder();return}
-    let target=NSPoint(x:Double(folder.x)-24-135*self.sizeFactor,y:Double(screen.frame.maxY)-Double(folder.y)+24.0-42.0*self.sizeFactor)
-    guard screen.visibleFrame.contains(NSRect(origin:target,size:self.panel.frame.size)),target.x-42>=screen.visibleFrame.minX else{self.cancelFolder();return}
+    guard value as? Bool == true else{self.cancelFolder();if manual{self.folderNotice("动画尚未准备好或小猫正忙，请再点一次。")};return}
+    var target=NSPoint(x:Double(folder.x)-24-135*self.sizeFactor,y:Double(screen.frame.maxY)-Double(folder.y)+24.0-42.0*self.sizeFactor)
+    target.x=min(max(target.x,screen.visibleFrame.minX+42),screen.visibleFrame.maxX-self.panel.frame.width)
+    target.y=min(max(target.y,screen.visibleFrame.minY),screen.visibleFrame.maxY-self.panel.frame.height)
     let origin=self.panel.frame.origin;let start=ProcessInfo.processInfo.systemUptime
     var step=0,inFlight=false,currentX=folder.x
     self.folderTimer=Timer.scheduledTimer(withTimeInterval:1.0/30,repeats:true){[weak self] timer in
      guard let self=self,self.folderGeneration==generation else{timer.invalidate();return}
-     guard self.foldersAllowed,!self.dragging,!self.animationPaused,!self.sleepPolicy.sleeping(at:Date()),self.panel.isVisible,self.panel.isOnActiveSpace,NSWorkspace.shared.frontmostApplication?.bundleIdentifier=="com.apple.finder" else{self.cancelFolder();return}
+     guard (manual || self.foldersAllowed),!self.dragging,!self.animationPaused,!self.sleepPolicy.sleeping(at:Date()),self.panel.isVisible,self.panel.isOnActiveSpace,(manual || NSWorkspace.shared.frontmostApplication?.bundleIdentifier=="com.apple.finder") else{self.cancelFolder();return}
      let elapsed=ProcessInfo.processInfo.systemUptime-start
      if elapsed<1 {let t=elapsed*elapsed*(3-2*elapsed);self.panel.setFrameOrigin(NSPoint(x:origin.x+(target.x-origin.x)*t,y:origin.y+(target.y-origin.y)*t));return}
      if step==0 {self.panel.setFrameOrigin(target)}
@@ -95,7 +110,7 @@ extension Controller {
      inFlight=true;let nextX=currentX-7
      self.folderBridge.place(folder,fromX:currentX,toX:nextX){[weak self] ok in
       guard let self=self,self.folderGeneration==generation else{return};inFlight=false
-      guard ok else{self.cancelFolder();return} // Auto-arrange or user changes: stop, never fight Finder.
+      guard ok else{self.cancelFolder();if manual{self.folderNotice("Finder 未保持图标位置。请将桌面排序设为“无”，检查叠放设置，或确认该文件未被同时移动。")};return} // Auto-arrange or user changes: stop, never fight Finder.
       currentX=nextX;step+=1
       self.panel.setFrameOrigin(NSPoint(x:target.x-Double(step)*7,y:target.y));self.motion.x=self.panel.frame.minX
       self.web.evaluateJavaScript("folderPose(\(step%2==0 ? 2:3))")
