@@ -46,3 +46,4 @@ PositionHistory单测覆盖首次起点不覆盖、重启保留、旧记录只�
 - Nearby search radius: 180 → 300 points. Unsuccessful attempts retry after 10 seconds; completed drags rest 60–120 seconds. Initial launch delay remains 30 seconds.
 - `lastFolderDrag.automatic` distinguishes a real automatic move from a manual test; coordinate readback and original-position history remain required for every successful step.
 - Regression suite passed, including interruption/exclusion tests; signed 2.6.6 local build installed. Runtime auto-drag observation recorded separately below.
+- Live verification after restart, without invoking the manual command: `lastFolderDrag.automatic=1`, `steps=6`, `fromX=1446`, `toX=1404`, `y=745`; all six writes read back successfully from Finder. Process running installed 2.6.6. This verifies actual automatic displacement (42 points); no new combined visual recording was captured.
