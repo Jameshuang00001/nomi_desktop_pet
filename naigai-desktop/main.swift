@@ -3,6 +3,7 @@ import WebKit
 
 final class Controller: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavigationDelegate {
  let folderBridge=FolderBridge()
+ var restoringPositions=false
  var foldersAllowed=UserDefaults.standard.bool(forKey:"foldersAllowed"), folderBusy=false
  var folderGeneration=0,folderTimer:Timer?
  var nextFolder=ProcessInfo.processInfo.systemUptime+30
@@ -109,6 +110,7 @@ final class Controller: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
   m.addItem(NSMenuItem(title:isSleeping ? "正在睡觉 · 夜间 23:00–06:00":"清醒中 · 夜间 23:00–06:00",action:nil,keyEquivalent:""))
   let wake=item("手动唤醒（夜间清醒20秒）",#selector(wakeManually));wake.isEnabled=isSleeping;m.addItem(wake)
   m.addItem(item("拖动文件（立即拖动最近的文件）",#selector(dragNearestFile)))
+  m.addItem(item("一键还原文件位置",#selector(restoreFilePositions)))
   let folders=item("允许糯米拖动文件夹",#selector(toggleFolders));folders.state=foldersAllowed ? .on:.off;m.addItem(folders)
   let potty=item("允许糯米拉屎",#selector(togglePotty));potty.state=pottyAllowed ? .on:.off;m.addItem(potty)
   m.addItem(item("一键清理",#selector(clearDroppings)))

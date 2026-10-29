@@ -2,6 +2,7 @@ import AppKit
 
 struct DesktopFolder { let name:String; let x:Int; let y:Int }
 final class FolderBridge {
+ private let history=PositionHistory()
  private let queue=DispatchQueue(label:"nuomi.finder")
  static func literal(_ s:String)->String {"\""+s.replacingOccurrences(of:"\\",with:"\\\\").replacingOccurrences(of:"\"",with:"\\\"")+"\""}
  func nearby(_ completion:@escaping ([DesktopFolder],String?)->Void){
@@ -57,14 +58,49 @@ final class FolderBridge {
    end tell
    """)!.executeAndReturnError(&error)
    let ok=error == nil && result.booleanValue
+   if ok && fromX != toX {self.history.remember(name:folder.name,x:fromX,y:folder.y)}
    DispatchQueue.main.async{completion(ok)}
   }
  }
+ func restorePositions(completion:@escaping(Int,Int)->Void){
+  queue.async {
+   var restored=0,failed=0
+   for item in self.history.entries {
+    var error:NSDictionary?
+    let name=Self.literal(item.name)
+    let result=NSAppleScript(source:"""
+    tell application "Finder"
+     if not (exists item \(name) of desktop) then return false
+     set f to item \(name) of desktop
+     set desktop position of f to {\(item.x), \(item.y)}
+     set p to get desktop position of f
+     return (item 1 of p is \(item.x)) and (item 2 of p is \(item.y))
+    end tell
+    """)!.executeAndReturnError(&error)
+    if error == nil && result.booleanValue{restored+=1;self.history.restored(item.name)}else{failed+=1}
+   }
+   DispatchQueue.main.async{completion(restored,failed)}
+  }
+ }
+
 }
 
 extension Controller {
+ @objc func restoreFilePositions(){
+  guard !restoringPositions else{return}
+  if desktopLayout().blocked{folderNotice("请先关闭桌面叠放，并将排序方式设为“无”，再还原文件位置。");return}
+  cancelFolder();restoringPositions=true
+  folderBridge.restorePositions{[weak self] restored,failed in
+   guard let self=self else{return};self.restoringPositions=false
+   self.nextFolder=ProcessInfo.processInfo.systemUptime+180
+   if restored==0 && failed==0{self.folderNotice("没有可还原的位置记录。旧版本没有完整历史，无法推算此前所有文件的原位置。")}
+   else{self.folderNotice("已还原 \(restored) 个桌面项目。"+(failed>0 ? "另有 \(failed) 个项目未能还原，记录已保留；请检查文件是否重命名、移出桌面或 Finder 权限。":""))}
+  }
+ }
+
  func folderNotice(_ message:String){let alert=NSAlert();alert.messageText="拖动桌面文件";alert.informativeText=message;alert.runModal()}
  @objc func dragNearestFile(){
+  guard !restoringPositions else{return}
   cancelFolder()
   if animationPaused{pause()}
   if isSleeping{wakeManually()}
@@ -99,6 +135,7 @@ extension Controller {
   return (group != "none" || arrangement != "none",(icons["iconSize"] as? NSNumber)?.doubleValue ?? 64)
  }
  func attemptFolder(manual:Bool=false){
+  guard !restoringPositions else{return}
   let layout=desktopLayout()
   if layout.blocked{if manual{folderNotice("桌面正在使用叠放或自动排序，项目坐标可能与可见图标不一致。请关闭“使用叠放”，将“排序方式”设为“无”后再拖动。")};return}
   let now=ProcessInfo.processInfo.systemUptime
