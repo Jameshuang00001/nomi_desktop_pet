@@ -26,7 +26,7 @@ final class Droppings {
  func add(at point:NSPoint,size:Double){let r=Dropping(id:UUID(),x:point.x,y:point.y,size:size);records.append(r);show(r);save()}
  func show(_ r:Dropping){
   let p=NSPanel(contentRect:NSRect(x:r.x,y:r.y,width:r.size,height:r.size),styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
-  p.title="糯米的便便";p.isOpaque=false;p.backgroundColor = .clear;p.hasShadow=false;p.level = .floating;p.hidesOnDeactivate=false
+  p.title="糯米的便便";p.isOpaque=false;p.backgroundColor = .clear;p.hasShadow=false;p.level = NSWindow.Level(rawValue:Int(CGWindowLevelForKey(.desktopIconWindow)));p.hidesOnDeactivate=false
   p.collectionBehavior=[.canJoinAllSpaces,.fullScreenNone,.fullScreenDisallowsTiling]
   let v=DroppingView(frame:NSRect(x:0,y:0,width:r.size,height:r.size));v.setAccessibilityElement(true);v.setAccessibilityRole(.button);v.setAccessibilityLabel("便便，左键拖动，右键清理");v.image=NSImage(contentsOf:Bundle.main.resourceURL!.appendingPathComponent("poop.png"))
   v.clean={ [weak self] in self?.remove(r.id) };v.moved={ [weak self] in self?.recordPosition(r.id) }

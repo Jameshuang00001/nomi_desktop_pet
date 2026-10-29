@@ -7,9 +7,9 @@ app=root/'dist/糯米桌面宠物.app'
 (app/'Contents/MacOS').mkdir(parents=True,exist_ok=True)
 s=(root/'assets/original-pet.html').read_text()
 s=s.replace('奶盖','糯米')
-s=s.replace('const pet=',(root/'naigai-desktop/gaze.js').read_text()+'\nlet sleeping=false,pottyActive=false;\nconst pet=',1)
-s=s.replace('function setState(i,hold=0){','function setState(i,hold=0){if(typeof sleeping!=="undefined"&&(sleeping||pottyActive))return;cancelLook();',1)
-s=s.replace('if(paused)return;draw(row,col)', 'if(paused||sleeping||pottyActive)return;draw(row,col)')
+s=s.replace('const pet=',(root/'naigai-desktop/gaze.js').read_text()+'\nlet sleeping=false,pottyActive=false,folderActive=false;\nconst pet=',1)
+s=s.replace('function setState(i,hold=0){','function setState(i,hold=0){if(typeof sleeping!=="undefined"&&(sleeping||pottyActive||folderActive))return;cancelLook();',1)
+s=s.replace('if(paused)return;draw(row,col)', 'if(paused||sleeping||pottyActive||folderActive)return;draw(row,col)')
 s=s.replace('[280,110,110,140,140,320]', '[560,220,220,280,280,640]')
 s=s.replace('</style>', '''
 html,body{background:transparent!important;margin:0!important;overflow:hidden!important;min-height:0!important;width:180px;height:170px}
@@ -26,9 +26,9 @@ pet.onpointerup=()=>{const moved=drag?.moved;bridge.postMessage({action:'up'});s
 pet.onpointercancel=()=>{drag=null;bridge.postMessage({action:'up'});setState(0)};
 document.addEventListener('contextmenu',e=>{e.preventDefault();drag=null;restUntil=performance.now()+6000;roamUntil=0;bridge.postMessage({action:'menu'})});
 ''' +s[b:]
-s=s.replace('</script>', (root/'naigai-desktop/roam.js').read_text()+(root/'naigai-desktop/sleep.js').read_text()+(root/'naigai-desktop/potty.js').read_text()+"\nfollow.checked=false;document.removeEventListener('pointermove',gaze);\n</script>")
+s=s.replace('</script>', (root/'naigai-desktop/roam.js').read_text()+(root/'naigai-desktop/sleep.js').read_text()+(root/'naigai-desktop/potty.js').read_text()+(root/'naigai-desktop/folder.js').read_text()+"\nfollow.checked=false;document.removeEventListener('pointermove',gaze);\n</script>")
 (app/'Contents/Resources/pet.html').write_text(s)
 shutil.copy2(root/'naigai-desktop/assets/sleep-sheet.png',app/'Contents/Resources/sleep-sheet.png')
-for asset in ['potty-sheet.png','poop.png']:shutil.copy2(root/'naigai-desktop/assets'/asset,app/'Contents/Resources'/asset)
-(app/'Contents/Info.plist').write_bytes(plistlib.dumps({'CFBundleIconFile':'Nuomi.icns','CFBundleExecutable':'Naigai','CFBundleIdentifier':'local.james.nuomi.htmlpet','CFBundleName':'糯米桌面宠物','CFBundleDisplayName':'糯米桌面宠物','CFBundlePackageType':'APPL','CFBundleShortVersionString':'2.5.0','CFBundleVersion':'7','LSMinimumSystemVersion':'13.0','LSUIElement':True,'NSHighResolutionCapable':True}))
+for asset in ['potty-sheet.png','poop.png','folder-sheet.png']:shutil.copy2(root/'naigai-desktop/assets'/asset,app/'Contents/Resources'/asset)
+(app/'Contents/Info.plist').write_bytes(plistlib.dumps({'NSAppleEventsUsageDescription':'允许糯米偶尔拖动附近桌面文件夹的图标位置，不移动文件夹内容。','CFBundleIconFile':'Nuomi.icns','CFBundleExecutable':'Naigai','CFBundleIdentifier':'local.james.nuomi.htmlpet','CFBundleName':'糯米桌面宠物','CFBundleDisplayName':'糯米桌面宠物','CFBundlePackageType':'APPL','CFBundleShortVersionString':'2.6.0','CFBundleVersion':'8','LSMinimumSystemVersion':'13.0','LSUIElement':True,'NSHighResolutionCapable':True}))
 print(app)

@@ -3,7 +3,7 @@ set -eu
 cd "$(dirname "$0")/.."
 python3 naigai-desktop/package.py
 app='dist/糯米桌面宠物.app'
-xcrun swiftc naigai-desktop/main.swift naigai-desktop/HorizontalMotion.swift naigai-desktop/SleepPolicy.swift naigai-desktop/Droppings.swift -target arm64-apple-macosx13.0 -framework AppKit -framework WebKit -module-cache-path /tmp/naigai-module-cache -o "$app/Contents/MacOS/Naigai"
+xcrun swiftc naigai-desktop/main.swift naigai-desktop/HorizontalMotion.swift naigai-desktop/SleepPolicy.swift naigai-desktop/Droppings.swift naigai-desktop/FolderDrag.swift -target arm64-apple-macosx13.0 -framework AppKit -framework WebKit -module-cache-path /tmp/naigai-module-cache -o "$app/Contents/MacOS/Naigai"
 icon_dir=$(mktemp -d /tmp/nuomi-icon.XXXXXX)
 mkdir "$icon_dir/Nuomi.iconset"
 for n in 16 32 128 256 512; do

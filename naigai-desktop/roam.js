@@ -5,7 +5,7 @@ function setRoaming(enabled){roamEnabled=enabled;roamUntil=0;restUntil=performan
 function reverseRoaming(direction){roamDirection=direction;if(roamUntil)setState(direction>0?1:2)}
 function roamFrame(now){
  const dt=roamLast===null?0:Math.min(.05,(now-roamLast)/1000);roamLast=now;
- if(!(typeof sleeping!=='undefined'&&sleeping)&&!(typeof pottyActive!=='undefined'&&pottyActive)&&roamEnabled&&!paused&&!nativeHidden&&!drag&&now>=restUntil){
+ if(!(typeof sleeping!=='undefined'&&sleeping)&&!(typeof pottyActive!=='undefined'&&pottyActive)&&!(typeof folderActive!=='undefined'&&folderActive)&&roamEnabled&&!paused&&!nativeHidden&&!drag&&now>=restUntil){
   if(!roamUntil){if(locked&&row!==1&&row!==2){restUntil=now+1000}else{roamStart=now;roamUntil=now+6000+Math.random()*4000;setState(roamDirection>0?1:2)}}
   if(roamUntil){
    const ease=Math.min(1,(now-roamStart)/800,(roamUntil-now)/800);
