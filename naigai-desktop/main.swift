@@ -26,6 +26,13 @@ final class Controller: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
   let config=WKWebViewConfiguration();config.userContentController.add(self,name:"pet")
   web=WKWebView(frame:panel.contentView!.bounds,configuration:config);web.autoresizingMask=[.width,.height];web.setValue(false,forKey:"drawsBackground");web.navigationDelegate=self
   panel.contentView=web
+  if UserDefaults.standard.bool(forKey:"finderDiagnosticsOnce") {
+   UserDefaults.standard.removeObject(forKey:"finderDiagnosticsOnce")
+   folderBridge.nearby{[weak self] items,_ in
+    guard let self=self,let item=items.first else{return}
+    self.folderBridge.place(item,fromX:item.x,toX:item.x){ok in UserDefaults.standard.set(ok,forKey:"finderPositionCheck")}
+   }
+  }
   let html=Bundle.main.resourceURL!.appendingPathComponent("pet.html")
   web.loadFileURL(html,allowingReadAccessTo:html.deletingLastPathComponent())
   status=NSStatusBar.system.statusItem(withLength:NSStatusItem.squareLength)

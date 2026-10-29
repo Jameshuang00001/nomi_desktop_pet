@@ -10,13 +10,18 @@ final class FolderBridge {
    let script=NSAppleScript(source:"""
    tell application "Finder"
     set resultList to {}
-    repeat with f in (items of desktop)
-     if class of f is not disk then
+    set desktopItems to get every item of desktop
+    repeat with itemRef in desktopItems
      try
-      set p to desktop position of f
-      set end of resultList to {name of f, item 1 of p, item 2 of p}
+      set f to contents of itemRef
+      if (class of f) is not disk then
+       set p to get desktop position of f
+       set itemName to get name of f
+       set px to item 1 of p
+       set py to item 2 of p
+       set end of resultList to {itemName, px, py}
+      end if
      end try
-     end if
     end repeat
     return resultList
    end tell
@@ -24,7 +29,14 @@ final class FolderBridge {
    let result=script.executeAndReturnError(&error)
    var folders:[DesktopFolder]=[]
    if error == nil && result.numberOfItems>0 {for i in 1...result.numberOfItems {if let r=result.atIndex(i),let name=r.atIndex(1)?.stringValue {folders.append(DesktopFolder(name:name,x:Int(r.atIndex(2)?.int32Value ?? -1),y:Int(r.atIndex(3)?.int32Value ?? -1)))}}}
-   let message=error == nil ? nil:"无法访问 Finder；请在系统设置的自动化权限中允许糯米控制 Finder。"
+   let message=error.map { e -> String in
+    let code=(e[NSAppleScript.errorNumber] as? NSNumber)?.intValue ?? 0
+    let detail=e[NSAppleScript.errorMessage] as? String ?? "未知错误"
+    UserDefaults.standard.set("\(code): \(detail)",forKey:"finderLastError")
+    if code == -1743 {return "macOS 拒绝了 Finder 自动化请求（-1743）。如果开关已经开启，可能是本地更新后签名变化导致旧授权失效，请重新关闭再开启糯米的 Finder 开关。"}
+    return "Finder 调用失败（\(code)）：\(detail)"
+   }
+   if error == nil {UserDefaults.standard.set("success: \(folders.count) desktop items",forKey:"finderLastError")}
    DispatchQueue.main.async{completion(folders,message)}
   }
  }

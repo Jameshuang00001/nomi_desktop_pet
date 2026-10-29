@@ -30,5 +30,5 @@ s=s.replace('</script>', (root/'naigai-desktop/roam.js').read_text()+(root/'naig
 (app/'Contents/Resources/pet.html').write_text(s)
 shutil.copy2(root/'naigai-desktop/assets/sleep-sheet.png',app/'Contents/Resources/sleep-sheet.png')
 for asset in ['potty-sheet.png','poop.png','folder-sheet.png']:shutil.copy2(root/'naigai-desktop/assets'/asset,app/'Contents/Resources'/asset)
-(app/'Contents/Info.plist').write_bytes(plistlib.dumps({'NSAppleEventsUsageDescription':'允许糯米偶尔拖动附近桌面文件夹的图标位置，不移动文件夹内容。','CFBundleIconFile':'Nuomi.icns','CFBundleExecutable':'Naigai','CFBundleIdentifier':'local.james.nuomi.htmlpet','CFBundleName':'糯米桌面宠物','CFBundleDisplayName':'糯米桌面宠物','CFBundlePackageType':'APPL','CFBundleShortVersionString':'2.6.1','CFBundleVersion':'9','LSMinimumSystemVersion':'13.0','LSUIElement':True,'NSHighResolutionCapable':True}))
+(app/'Contents/Info.plist').write_bytes(plistlib.dumps({'NSAppleEventsUsageDescription':'允许糯米偶尔拖动附近桌面文件夹的图标位置，不移动文件夹内容。','CFBundleIconFile':'Nuomi.icns','CFBundleExecutable':'Naigai','CFBundleIdentifier':'local.james.nuomi.htmlpet','CFBundleName':'糯米桌面宠物','CFBundleDisplayName':'糯米桌面宠物','CFBundlePackageType':'APPL','CFBundleShortVersionString':'2.6.2','CFBundleVersion':'10','LSMinimumSystemVersion':'13.0','LSUIElement':True,'NSHighResolutionCapable':True}))
 print(app)
