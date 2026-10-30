@@ -14,6 +14,7 @@ final class Controller: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
  var sleepTimer:Timer?
  var followUntil=0.0, lookRequestPending=false
  var lookTimer:Timer?, nextLook=ProcessInfo.processInfo.systemUptime+4
+ var motionRemainder=NSPoint.zero
  var motion=HorizontalMotion(), motionSamples=0
  var motionTotals:[String:Double]=["leftRequested":0,"leftActual":0,"rightRequested":0,"rightActual":0]
  let sizeFactors:[Double]=[0.55,0.75,1,1.3,1.6]
@@ -137,11 +138,12 @@ final class Controller: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
    if !folderBusy && !pottyRunning && !isSleeping && roaming && !dragging && !animationPaused && panel.isVisible && panel.isOnActiveSpace,
       let dx=body["dx"] as? Double,let dy=body["dy"] as? Double,dx.isFinite,dy.isFinite,abs(dx)<2,abs(dy)<2,let screen=panel.screen ?? NSScreen.main {
     let bounds=screen.visibleFrame,previous=panel.frame.origin
-    motion.x=previous.x
+    motion.x=previous.x+motionRemainder.x
     let horizontal=motion.advance(by:dx,minX:bounds.minX,maxX:bounds.maxX-panel.frame.width)
-    var vertical=HorizontalMotion(x:previous.y)
+    var vertical=HorizontalMotion(x:previous.y+motionRemainder.y)
     let height=vertical.advance(by:dy,minX:bounds.minY,maxX:bounds.maxY-panel.frame.height)
     panel.setFrameOrigin(NSPoint(x:horizontal.x,y:height.x))
+    motionRemainder=NSPoint(x:horizontal.x-panel.frame.minX,y:height.x-panel.frame.minY)
     recordMotion(dx:dx,actual:panel.frame.minX-previous.x)
     motionTotals["verticalRequested",default:0]+=abs(dy)
     motionTotals["verticalActual",default:0]+=abs(panel.frame.minY-previous.y)

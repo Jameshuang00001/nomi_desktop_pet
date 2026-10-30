@@ -53,3 +53,4 @@ PositionHistory单测覆盖首次起点不覆盖、重启保留、旧记录只�
 - Total cruising speed increased from 18 to 36 points/second, normalized so diagonals do not move faster. Existing 800ms start/stop easing remains.
 - Native window accepts finite bounded dx/dy, clamps both axes and uses its actual current position. File dragging retains its separate alignment path.
 - Added vertical travel, both vertical direction changes and total-speed regression assertions. Full test suite and signed app build passed; installed locally. motion-check.json now records absolute vertical requested/actual distances for live verification.
+- Live testing exposed NSWindow integer-coordinate quantization; retain fractional remainders on both axes instead of discarding subpixel motion. After reinstall, live totals: left requested -320.17 / actual -321 pt, right requested 315.26 / actual 315 pt, vertical absolute requested 344.88 / actual 344 pt. Confirms actual two-axis movement, not just JS messages.
