@@ -47,3 +47,9 @@ PositionHistory单测覆盖首次起点不覆盖、重启保留、旧记录只�
 - `lastFolderDrag.automatic` distinguishes a real automatic move from a manual test; coordinate readback and original-position history remain required for every successful step.
 - Regression suite passed, including interruption/exclusion tests; signed 2.6.6 local build installed. Runtime auto-drag observation recorded separately below.
 - Live verification after restart, without invoking the manual command: `lastFolderDrag.automatic=1`, `steps=6`, `fromX=1446`, `toX=1404`, `y=745`; all six writes read back successfully from Finder. Process running installed 2.6.6. This verifies actual automatic displacement (42 points); no new combined visual recording was captured.
+
+## 2.6.7 — two-dimensional roaming
+- Roaming now chooses upward/downward diagonal routes each outing; side-facing original artwork is unchanged. Vertical bounds reflect direction just like horizontal bounds.
+- Total cruising speed increased from 18 to 36 points/second, normalized so diagonals do not move faster. Existing 800ms start/stop easing remains.
+- Native window accepts finite bounded dx/dy, clamps both axes and uses its actual current position. File dragging retains its separate alignment path.
+- Added vertical travel, both vertical direction changes and total-speed regression assertions. Full test suite and signed app build passed; installed locally. motion-check.json now records absolute vertical requested/actual distances for live verification.

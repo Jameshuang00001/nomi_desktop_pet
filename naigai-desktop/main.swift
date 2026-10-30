@@ -134,7 +134,20 @@ final class Controller: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
    }
   case "pottyFinished":pottyRunning=false;pottyPending=false;nextPotty=ProcessInfo.processInfo.systemUptime+Double.random(in:300...600)
   case "step":
-   if !folderBusy && !pottyRunning && !isSleeping && roaming && !dragging && !animationPaused && panel.isVisible,let dx=body["dx"] as? Double,dx.isFinite,abs(dx)<2,let screen=panel.screen ?? NSScreen.main {let bounds=screen.visibleFrame;let previous=panel.frame.minX;let result=motion.advance(by:dx,minX:bounds.minX,maxX:bounds.maxX-panel.frame.width);panel.setFrameOrigin(NSPoint(x:result.x,y:panel.frame.minY));recordMotion(dx:dx,actual:panel.frame.minX-previous);if result.hitEdge {web.evaluateJavaScript("reverseRoaming(\(dx>0 ? -1:1))")}}
+   if !folderBusy && !pottyRunning && !isSleeping && roaming && !dragging && !animationPaused && panel.isVisible && panel.isOnActiveSpace,
+      let dx=body["dx"] as? Double,let dy=body["dy"] as? Double,dx.isFinite,dy.isFinite,abs(dx)<2,abs(dy)<2,let screen=panel.screen ?? NSScreen.main {
+    let bounds=screen.visibleFrame,previous=panel.frame.origin
+    motion.x=previous.x
+    let horizontal=motion.advance(by:dx,minX:bounds.minX,maxX:bounds.maxX-panel.frame.width)
+    var vertical=HorizontalMotion(x:previous.y)
+    let height=vertical.advance(by:dy,minX:bounds.minY,maxX:bounds.maxY-panel.frame.height)
+    panel.setFrameOrigin(NSPoint(x:horizontal.x,y:height.x))
+    recordMotion(dx:dx,actual:panel.frame.minX-previous.x)
+    motionTotals["verticalRequested",default:0]+=abs(dy)
+    motionTotals["verticalActual",default:0]+=abs(panel.frame.minY-previous.y)
+    if horizontal.hitEdge {web.evaluateJavaScript("reverseRoaming(\(dx>0 ? -1:1))")}
+    if height.hitEdge {web.evaluateJavaScript("reverseVertical(\(dy>0 ? -1:1))")}
+   }
   case "down": cancelFolder();if let x=body["x"] as? Double,let y=body["y"] as? Double {start=NSPoint(x:x,y:y);origin=panel.frame.origin;motion.x=origin.x;dragging=true}
   case "move": if dragging,let x=body["x"] as? Double,let y=body["y"] as? Double {panel.setFrameOrigin(NSPoint(x:origin.x+x-start.x,y:origin.y-y+start.y))}
   case "up": dragging=false;clamp()
